@@ -1,7 +1,7 @@
 #![allow(warnings)]
 
 // Small abstraction to make things a little easier
-use std::{ io, time::{Duration, Instant},};use crossterm::{ event::{self, Event as CrosstermEvent, KeyEvent}, execute, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},};use ratatui::{Terminal, backend::CrosstermBackend};pub trait TuiApp { fn draw(&mut self, frame: &mut ratatui::Frame); fn event(&mut self, event: AppEvent) -> bool;}pub enum AppEvent { Key(KeyEvent), Tick,}pub struct TuiConfig { pub tick_rate: Duration, pub debounce: Option<Duration>,}impl Default for TuiConfig { fn default() -> Self { Self { tick_rate: Duration::from_millis(250), debounce: None, } }}pub struct Tui { terminal: Terminal<CrosstermBackend<io::Stdout>>, config: TuiConfig,}impl Tui { pub fn new(config: TuiConfig) -> io::Result<Self> { enable_raw_mode()?; let mut stdout = io::stdout(); execute!(stdout, EnterAlternateScreen)?; let backend = CrosstermBackend::new(stdout); let terminal = Terminal::new(backend)?; Ok(Self { terminal, config }) } pub fn run<A: TuiApp>(&mut self, mut app: A) -> io::Result<()> { let mut last_tick = Instant::now(); let mut last_key = Instant::now(); loop { self.terminal.draw(|f| app.draw(f))?; let timeout = self .config .tick_rate .saturating_sub(last_tick.elapsed()); if event::poll(timeout)? { if let CrosstermEvent::Key(key) = event::read()? { if let Some(debounce) = self.config.debounce { if last_key.elapsed() < debounce { continue; } last_key = Instant::now(); } if !app.event(AppEvent::Key(key)) { break; } } } if last_tick.elapsed() >= self.config.tick_rate { last_tick = Instant::now(); if !app.event(AppEvent::Tick) { break; } } } Ok(()) }}impl Drop for Tui { fn drop(&mut self) { let _ = disable_raw_mode(); let _ = execute!( self.terminal.backend_mut(), LeaveAlternateScreen ); let _ = self.terminal.show_cursor(); }}
+use std::{ io, ops::Add, time::{Duration, Instant}};use crossterm::{ event::{self, Event as CrosstermEvent, KeyEvent}, execute, terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},};use ratatui::{Terminal, backend::CrosstermBackend};pub trait TuiApp { fn draw(&mut self, frame: &mut ratatui::Frame); fn event(&mut self, event: AppEvent) -> bool;}pub enum AppEvent { Key(KeyEvent), Tick,}pub struct TuiConfig { pub tick_rate: Duration, pub debounce: Option<Duration>,}impl Default for TuiConfig { fn default() -> Self { Self { tick_rate: Duration::from_millis(250), debounce: None, } }}pub struct Tui { terminal: Terminal<CrosstermBackend<io::Stdout>>, config: TuiConfig,}impl Tui { pub fn new(config: TuiConfig) -> io::Result<Self> { enable_raw_mode()?; let mut stdout = io::stdout(); execute!(stdout, EnterAlternateScreen)?; let backend = CrosstermBackend::new(stdout); let terminal = Terminal::new(backend)?; Ok(Self { terminal, config }) } pub fn run<A: TuiApp>(&mut self, mut app: A) -> io::Result<()> { let mut last_tick = Instant::now(); let mut last_key = Instant::now(); loop { self.terminal.draw(|f| app.draw(f))?; let timeout = self .config .tick_rate .saturating_sub(last_tick.elapsed()); if event::poll(timeout)? { if let CrosstermEvent::Key(key) = event::read()? { if let Some(debounce) = self.config.debounce { if last_key.elapsed() < debounce { continue; } last_key = Instant::now(); } if !app.event(AppEvent::Key(key)) { break; } } } if last_tick.elapsed() >= self.config.tick_rate { last_tick = Instant::now(); if !app.event(AppEvent::Tick) { break; } } } Ok(()) }}impl Drop for Tui { fn drop(&mut self) { let _ = disable_raw_mode(); let _ = execute!( self.terminal.backend_mut(), LeaveAlternateScreen ); let _ = self.terminal.show_cursor(); }}
 
 
 
@@ -36,10 +36,11 @@ impl App {
 
 impl TuiApp for App {
     fn draw(&mut self, frame: &mut ratatui::Frame) {
-        let sepstyle = powerline::SeparatorStyle::CUSTOM { exit: '', exit_is_reversed: true, enter: '', enter_is_reversed: false };
+        let sepstyle = powerline::SeparatorStyle::CUSTOM { enter: '', enter_is_reversed: true, exit: '', exit_is_reversed: false };
         let leftsep = powerline::Separator::new(sepstyle, 0);
-        let my_segment = powerline::Segment::new(Color::Black, Color::Green, "Adrian", 1, 1, &leftsep, &leftsep);
-        let le_text = my_segment.compute();
+        let my_segment = powerline::Segment::new(Color::Black, Color::Green, "Lorem", 1, 1, &leftsep, &leftsep);
+        let another_segment = powerline::Segment::new(Color::Black, Color::Red, "ipsum", 1, 1, &leftsep, &leftsep);
+        let le_text = Line::from(powerline::compute(vec![my_segment, another_segment]));
 
 
 
