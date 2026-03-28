@@ -37,10 +37,12 @@ impl App {
 impl TuiApp for App {
     fn draw(&mut self, frame: &mut ratatui::Frame) {
         let sepstyle = powerline::SeparatorStyle::CUSTOM { enter: '', enter_is_reversed: true, exit: '', exit_is_reversed: false };
-        let leftsep = powerline::Separator::new(sepstyle, 0);
-        let my_segment = powerline::Segment::new(Color::Black, Color::Green, "Lorem", 1, 1, &leftsep, &leftsep);
-        let another_segment = powerline::Segment::new(Color::Black, Color::Red, "ipsum", 1, 1, &leftsep, &leftsep);
-        let le_text = Line::from(powerline::compute(vec![my_segment, another_segment]));
+        let leftsep = powerline::Separator::new(sepstyle.clone(), 0);
+        let gapsep = powerline::Separator::new(sepstyle.clone(), 1);
+        let yet_another_segment = powerline::Segment::new(Color::Black, Color::Yellow, "dolor", 1, 1, &leftsep, None);
+        let another_segment = powerline::Segment::new(Color::Black, Color::Red, "ipsum", 1, 1, &gapsep, Some(&yet_another_segment));
+        let my_segment = powerline::Segment::new(Color::Black, Color::Green, "Lorem", 1, 1, &leftsep, Some(&another_segment));
+        let le_text = Line::from(powerline::compute(vec![&my_segment, &another_segment, &yet_another_segment]));
 
 
 
@@ -156,7 +158,6 @@ fn main() -> io::Result<()> {
         debounce: Some(std::time::Duration::from_millis(50)),
         ..Default::default()
     })?;
-    println!("powerline time");
 
     tui.run(App::new())
 }
